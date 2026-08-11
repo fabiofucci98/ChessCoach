@@ -48,14 +48,14 @@ docker compose logs -f
 
 ### 3. Gestione Migrazioni Database (Alembic)
 
-Le migrazioni vengono eseguite automaticamente all'avvio del container API. Se hai la necessità di gestirle manualmente:
+Le migrazioni **non** vengono applicate automaticamente all'avvio del container: eseguile manualmente (obbligatorio al primo avvio su un database nuovo).
 
 ```bash
-# Genera una nuova migrazione dopo aver aggiornato i modelli SQLAlchemy
-docker compose exec api alembic revision --autogenerate -m 
-
-# Applica le migrazioni pendenti
+# Applica le migrazioni pendenti (obbligatorio su un database nuovo)
 docker compose exec api alembic upgrade head
+
+# Genera una nuova migrazione dopo aver aggiornato i modelli SQLAlchemy
+docker compose exec api alembic revision --autogenerate -m "descrizione"
 ```
 
 ### 4. Arresto dei Container
@@ -67,6 +67,29 @@ docker compose down
 # Ferma e cancella i volumi del database (ripartenza pulita)
 docker compose down -v
 ```
+
+---
+
+## 🌍 Variabili d'Ambiente (.env)
+
+Copia i file di esempio e personalizzali (i file `.env` reali non vanno mai committati):
+
+```bash
+cp .env.example .env                  # variabili usate da docker-compose
+cp backend/.env.example backend/.env  # variabili del backend
+```
+
+| Variabile | Descrizione | Default |
+| :--- | :--- | :--- |
+| `POSTGRES_USER` | Utente PostgreSQL | `chesscoach` |
+| `POSTGRES_PASSWORD` | Password PostgreSQL | *obbligatoria* |
+| `POSTGRES_DB` | Nome database | `chesscoach_db` |
+| `REDIS_URL` | URL broker Redis | `redis://redis:6379/0` |
+| `SECRET_KEY` | Chiave di firma JWT | *obbligatoria — genera una casuale!* |
+| `STOCKFISH_PATH` | Percorso del binario Stockfish | Windows: `C:/stockfish/stockfish.exe`, Docker: `/usr/games/stockfish` |
+
+> `STOCKFISH_PATH` è la causa più comune di errori nell'analisi: in locale usa il percorso Windows,
+> nel container Docker quello Linux (`/usr/games/stockfish`). Verifica sempre con `/health`.
 
 ---
 
@@ -117,22 +140,28 @@ npm run dev
 
 ```plaintext
 chesscoach/
-├── .vscode/                 # Impostazioni workspace VS Code (PYTHONPATH)
 ├── backend/                 # Applicazione FastAPI
 │   ├── app/
-│   │   ├── core/            # Configurazioni, connessione DB, setup Celery
+│   │   ├── core/            # Config, DB, sicurezza, Celery, Stockfish
 │   │   ├── migrations/      # Script di migrazione Alembic
 │   │   ├── models/          # Modelli DB SQLAlchemy
-│   │   ├── routes/          # Endpoints API REST
-│   │   └── tasks/           # Task asincroni Celery (Stockfish)
+│   │   ├── routers/         # Endpoints API REST (auth, games, analysis, play, puzzles)
+│   │   ├── services/        # Client esterni (chess.com API)
+│   │   ├── tasks/           # Task asincroni Celery
+│   │   └── main.py          # Entrypoint FastAPI
 │   ├── Dockerfile
 │   ├── alembic.ini
 │   └── requirements.txt
-├── frontend/                # Applicazione Next.js
-│   ├── app/                 # Next.js App Router
+├── frontend/                # Applicazione Next.js (App Router)
+│   ├── src/app/             # Pagine Next.js
+│   ├── src/components/      # Componenti React
+│   ├── src/hooks/           # Hook (useChessGame)
+│   ├── src/lib/             # Client API & contesto auth
 │   ├── Dockerfile
 │   └── package.json
 ├── docker-compose.yml       # Orchestratore multi-container
+├── DEBUGGING.md             # Comandi utili per il debugging
+├── TODO.md                  # Roadmap di sviluppo
 └── README.md                # Documentazione del progetto
 ```
 
