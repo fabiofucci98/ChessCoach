@@ -164,6 +164,34 @@ redis-cli dbsize        # how many keys
 redis-cli keys '*'      # list keys (Celery uses celery-task-meta-*, etc.)
 ```
 
+### Reset / clean the database
+
+**Option A — full wipe (fresh DB, cleanest slate):**
+```powershell
+docker compose down -v   # stops containers and deletes the Postgres volume
+docker compose up -d     # recreates everything + auto-applies migrations
+```
+
+**Option B — reset the schema but keep the volume:**
+```powershell
+# Drop every table (including alembic_version), then recreate via migrations
+docker compose exec db psql -U $env:POSTGRES_USER -d $env:POSTGRES_DB -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+docker compose exec api alembic upgrade head
+```
+
+**Option C — clear data only (keep the schema):**
+```powershell
+docker compose exec db psql -U $env:POSTGRES_USER -d $env:POSTGRES_DB -c "TRUNCATE users, games, bad_moves CASCADE;"
+```
+
+**Option D — delete one user's data (games/bad_moves cascade):**
+```powershell
+docker compose exec db psql -U $env:POSTGRES_USER -d $env:POSTGRES_DB -c "DELETE FROM users WHERE username = 'yourname';"
+```
+
+> **Caution:** Options A and B permanently destroy data. For local dev, credentials come from the root `.env`
+> (default user `chesscoach`, db `chesscoach_db`); replace `$env:POSTGRES_USER` / `$env:POSTGRES_DB` if yours differ.
+
 ---
 
 ## 5. Common problems → fixes
