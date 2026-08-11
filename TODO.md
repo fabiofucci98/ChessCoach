@@ -45,9 +45,9 @@
 ---
 
 ## Phase 6: Git & Project Foundation
-- [ ] Initialize git repo + baseline commit (currently NO git repo!)
-- [ ] Review root .gitignore (add .next, *.pyc, .venv, coverage)
-- [ ] Add committed .env.example files (root + backend) documenting required vars
+- [x] Initialize git repo + baseline commit (currently NO git repo!)
+- [x] Review root .gitignore (add .next, *.pyc, .venv, coverage)
+- [x] Add committed .env.example files (root + backend) documenting required vars
 
 ## Phase 7: Fix Play-vs-Stockfish (BUG)
 - [x] Backend play.py: Stockfish reply uses best move from `board_before` instead of `board_after` -> use `result_after["pv"][0]` (root cause)
