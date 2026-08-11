@@ -54,6 +54,8 @@
 - [x] Frontend PlayVsStockfish: stale closure on color toggle -> switching to Black never triggers stockfishFirstMove()
 - [x] Frontend PlayVsStockfish: enforce turns + player color in onDrop (currently can move both sides)
 - [ ] (Design) Server-side game/session state instead of 100% client-side
+- [x] Play-vs-Stockfish: WRONG checkmate message — after Stockfish's reply, isCheckmate() means the player LOST (currently says "🏆 you win"); also detect the player's own checkmate after their move and show the correct win/lose/draw message
+- [x] Play-vs-Stockfish: when a move is flagged as a mistake, the game keeps playing ("let's review it") — pause the game and offer to review the mistake (show the best move / position) instead of silently continuing
 
 ## Phase 8: Docker Fixes
 - [ ] Add backend/.dockerignore (exclude ~99MB .venv from build context - biggest build win)
