@@ -130,12 +130,13 @@ async def play_move(
         else:
             message = GOOD_MESSAGES[0]
 
-        # Stockfish's reply move (best move from the position after player's move)
+        # Stockfish's reply: best move from the position AFTER the player's move (Stockfish's turn)
         sf_move = None
         sf_uci = None
-        if best_move_uci:
-            sf_move = best_move_san
-            sf_uci = best_move_uci
+        best_reply = result_after.get("pv", [None])[0]
+        if best_reply:
+            sf_move = board_after.san(best_reply)
+            sf_uci = best_reply.uci()
 
         return PlayMoveResponse(
             evaluation=eval_after,

@@ -36,18 +36,28 @@ export default function PlayVsStockfish() {
     }
   }
 
-  function resetGame() {
+  function startNewGame(color: "white" | "black") {
     setBoard(new Chess());
     setMessage("Game reset. Play your move...");
     setType("info");
     setLastMove(null);
     setEvalScore(null);
     setThinking(true);
-    if (playerColor === "black") {
+    if (color === "black") {
       stockfishFirstMove();
     } else {
       setThinking(false);
     }
+  }
+
+  function resetGame() {
+    startNewGame(playerColor);
+  }
+
+  function toggleColor() {
+    const next: "white" | "black" = playerColor === "white" ? "black" : "white";
+    setPlayerColor(next);
+    startNewGame(next);
   }
 
   async function evaluateMove(fen: string, fenBefore: string) {
@@ -69,13 +79,20 @@ export default function PlayVsStockfish() {
           setType("good");
         }
 
-        // Stockfish replies with its best move
+        // Stockfish replies with its best move (applied to the position after the player's move)
         if (r.stockfish_uci) {
-          const sf = new Chess(board.fen());
+          const sf = new Chess(fen);
           try {
             sf.move({ from: r.stockfish_uci.slice(0, 2), to: r.stockfish_uci.slice(2, 4), promotion: "q" });
             setBoard(sf);
             setLastMove(`${sf.history().slice(-1)[0] ?? ""} (Stockfish)`);
+            if (sf.isCheckmate()) {
+              setMessage("🏆 Checkmate — you win! Well played!");
+              setType("good");
+            } else if (sf.isStalemate() || sf.isDraw()) {
+              setMessage("🤝 Draw.");
+              setType("info");
+            }
           } catch {
             // ignore invalid Stockfish reply
           }
@@ -92,6 +109,13 @@ export default function PlayVsStockfish() {
   function onDrop({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean {
     if (thinking) return false;
     if (!targetSquare) return false;
+
+    // Only the human player acts, and only on their own turn, with their own pieces
+    const myColor: "w" | "b" = playerColor === "white" ? "w" : "b";
+    if (board.turn() !== myColor) return false;
+    const piece = board.get(sourceSquare as Square);
+    if (!piece || piece.color !== myColor) return false;
+
     const before = board.fen();
     const copy = new Chess(board.fen());
     let move;
@@ -124,10 +148,7 @@ export default function PlayVsStockfish() {
         </h2>
         <div className="flex gap-2">
           <button
-            onClick={() => {
-              setPlayerColor((c) => (c === "white" ? "black" : "white"));
-              resetGame();
-            }}
+            onClick={toggleColor}
             className="rounded bg-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-600"
           >
             {playerColor === "white" ? "♔ White" : "♚ Black"}

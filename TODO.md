@@ -50,9 +50,9 @@
 - [ ] Add committed .env.example files (root + backend) documenting required vars
 
 ## Phase 7: Fix Play-vs-Stockfish (BUG)
-- [ ] Backend play.py: Stockfish reply uses best move from `board_before` instead of `board_after` -> use `result_after["pv"][0]` (root cause)
-- [ ] Frontend PlayVsStockfish: stale closure on color toggle -> switching to Black never triggers stockfishFirstMove()
-- [ ] Frontend PlayVsStockfish: enforce turns + player color in onDrop (currently can move both sides)
+- [x] Backend play.py: Stockfish reply uses best move from `board_before` instead of `board_after` -> use `result_after["pv"][0]` (root cause)
+- [x] Frontend PlayVsStockfish: stale closure on color toggle -> switching to Black never triggers stockfishFirstMove()
+- [x] Frontend PlayVsStockfish: enforce turns + player color in onDrop (currently can move both sides)
 - [ ] (Design) Server-side game/session state instead of 100% client-side
 
 ## Phase 8: Docker Fixes
