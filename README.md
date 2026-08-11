@@ -36,6 +36,10 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
+> **Dev vs Prod:** `docker compose up` usa la configurazione di **sviluppo** grazie a
+> `docker-compose.override.yml` (volume-mounted, `--reload`, porte DB/Redis esposte sull'host).
+> Per la configurazione di **produzione** esegui: `docker compose -f docker-compose.yml up -d --build`.
+
 ### 2. Mappa dei Servizi ed Endpoints
 
 | Servizio | Porta / URL | Descrizione |
@@ -48,10 +52,11 @@ docker compose logs -f
 
 ### 3. Gestione Migrazioni Database (Alembic)
 
-Le migrazioni **non** vengono applicate automaticamente all'avvio del container: eseguile manualmente (obbligatorio al primo avvio su un database nuovo).
+Le migrazioni vengono applicate **automaticamente** ad ogni avvio del container API
+(`alembic upgrade head` viene eseguito prima di avviare uvicorn). Per operazioni manuali:
 
 ```bash
-# Applica le migrazioni pendenti (obbligatorio su un database nuovo)
+# Applica manualmente le migrazioni pendenti
 docker compose exec api alembic upgrade head
 
 # Genera una nuova migrazione dopo aver aggiornato i modelli SQLAlchemy

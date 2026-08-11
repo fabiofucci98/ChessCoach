@@ -1,0 +1,28 @@
+# Development overrides — applied automatically by `docker compose up`.
+# Run the production config with: docker compose -f docker-compose.yml up
+services:
+  db:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    command: sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    volumes:
+      - ./backend:/app
+
+  worker:
+    volumes:
+      - ./backend:/app
+
+  web:
+    build:
+      dockerfile: Dockerfile.dev
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules   # keep the image's node_modules (Linux deps)
+      - /app/.next          # isolate the Next.js dev build cache

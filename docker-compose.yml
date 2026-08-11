@@ -7,17 +7,34 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
 
   redis:
     image: redis:7-alpine
     container_name: chesscoach_redis
     restart: always
-    ports:
-      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.5'
 
   api:
     build:
@@ -25,7 +42,8 @@ services:
       dockerfile: Dockerfile
     container_name: chesscoach_api
     restart: always
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Apply DB migrations on startup, then start the API
+    command: sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     environment:
@@ -35,11 +53,17 @@ services:
       - POSTGRES_HOST=db
       - REDIS_URL=${REDIS_URL}
       - STOCKFISH_PATH=/usr/games/stockfish
-    volumes:
-      - ./backend:/app
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   worker:
     build:
@@ -54,28 +78,28 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=db
       - REDIS_URL=${REDIS_URL}
-    volumes:
-      - ./backend:/app
+      - STOCKFISH_PATH=/usr/games/stockfish
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
     container_name: chesscoach_web
     restart: always
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules   # Usa le dipendenze Linux installate nel container
-      - /app/.next          # Isola la cache di build del Next.js Dev Server
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -58,13 +58,14 @@
 - [x] Play-vs-Stockfish: when a move is flagged as a mistake, the game keeps playing ("let's review it") — pause the game and offer to review the mistake (show the best move / position) instead of silently continuing
 
 ## Phase 8: Docker Fixes
-- [ ] Add backend/.dockerignore (exclude ~99MB .venv from build context - biggest build win)
-- [ ] Entrypoint script: run `alembic upgrade head` before uvicorn (README claims auto-migrate but nothing does it)
-- [ ] Add healthchecks for db/redis + `depends_on: condition: service_healthy`
-- [ ] Split dev/prod compose (remove --reload from prod, don't publish db/redis ports in prod)
-- [ ] Frontend: multi-stage Dockerfile with `next build && next start` for prod (drop `npm ci || npm install` hack)
-- [ ] Redis auth + resource limits (prod)
-- [ ] Consider newer Stockfish build (apt version is old)
+- [x] Add backend/.dockerignore (exclude ~99MB .venv from build context - biggest build win)
+- [x] Auto-run `alembic upgrade head` before uvicorn on API startup (via compose command; README claim now true)
+- [x] Add healthchecks for db/redis + `depends_on: condition: service_healthy`
+- [x] Split dev/prod compose (remove --reload from prod, don't publish db/redis ports in prod)
+- [x] Frontend: multi-stage Dockerfile with `next build && next start` for prod (drop `npm ci || npm install` hack)
+- [x] Add resource limits (db 512M / redis 128M)
+- [ ] Redis auth (deferred: needs celery password support in celery_app.py + REDIS_PASSWORD env)
+- [x] Stockfish: kept apt package (stable, version ~14 - sufficient for a coaching app)
 
 ## Phase 9: Backend Tests (pytest)
 - [ ] Add pytest + async test setup (httpx ASGITransport)

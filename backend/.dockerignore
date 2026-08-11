@@ -1,0 +1,10 @@
+# Keep local-only / generated files out of the Docker build context
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.env
+.git
+.gitignore
+*.log
+Dockerfile

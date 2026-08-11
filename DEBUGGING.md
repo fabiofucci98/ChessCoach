@@ -58,8 +58,8 @@ alembic downgrade <revision_id>
 # Autogenerate a new migration after editing models
 alembic revision --autogenerate -m "describe change"
 ```
-> The compose `api` service runs **only** uvicorn — it does **not** auto-migrate. On a fresh DB,
-> run `docker compose exec api alembic upgrade head` before expecting the app to work.
+> The compose `api` service runs `alembic upgrade head` automatically before uvicorn starts,
+> so migrations are applied on startup. Manual commands remain available (see below).
 
 ### Celery worker
 ```powershell
@@ -172,7 +172,7 @@ redis-cli keys '*'      # list keys (Celery uses celery-task-meta-*, etc.)
 | :--- | :--- | :--- |
 | `/health` shows `stockfish.installed: false` | `STOCKFISH_PATH` wrong/missing | Set it in `backend\.env` (Windows) or compose env (Linux: `/usr/games/stockfish`); restart the service |
 | Analysis/play returns 500 "engine not found" | Same as above | See `/health`, set path correctly |
-| Fresh DB, login/sync errors on tables | Migrations not applied (compose does NOT auto-migrate) | `docker compose exec api alembic upgrade head` |
+| Tables missing on a fresh DB | Migration step failed / wrong DB target | Check `api` logs; rerun `docker compose exec api alembic upgrade head` manually |
 | Frontend can't reach API / CORS error | `NEXT_PUBLIC_API_URL` mismatch or CORS origins | Check API is up (`/health`); CORS allow list is in `backend/app/main.py` |
 | `docker compose up` fails waiting for DB | No healthcheck + `depends_on` only (see TODO Phase 8) | `docker compose restart api` once db/redis are up, or fix compose |
 | Celery task stuck | Redis unreachable | `redis-cli ping` from host/`docker compose exec redis redis-cli ping` |
