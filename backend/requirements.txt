@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+asyncpg
+alembic
+pydantic
+pydantic-settings
+python-chess==1.0.1
+celery
+redis
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+httpx
+email-validator
