@@ -68,33 +68,33 @@
 - [x] Stockfish: kept apt package (stable, version ~14 - sufficient for a coaching app)
 
 ## Phase 9: Backend Tests (pytest)
-- [ ] Add pytest + async test setup (httpx ASGITransport)
-- [ ] Unit: sm2_update (puzzles.py)
-- [ ] Unit: parse_chess_com_game (games.py)
-- [ ] Unit: eval_diff -> mistake_level classification (play.py)
-- [ ] Unit: security.py (hash/verify/JWT)
-- [ ] Integration w/ Stockfish: analyze_position, play_move, analyze_game_moves
-- [ ] API tests against test Postgres
+- [x] Add pytest + async test setup (httpx ASGITransport)
+- [x] Unit: sm2_update (puzzles.py)
+- [x] Unit: parse_chess_com_game (games.py)
+- [x] Unit: eval_diff -> mistake_level classification (play.py)
+- [x] Unit: security.py (hash/verify/JWT)
+- [x] Integration w/ Stockfish: analyze_position, play_move, analyze_game_moves
+- [x] API tests against test Postgres (guarded by TEST_DATABASE_URL)
 
 ## Phase 10: Architecture / Performance
-- [ ] Move blocking SimpleEngine.analyse off the event loop (Celery worker exists but is a stub: tasks/engine.py ping_worker) or anyio.to_thread
-- [ ] Centralize STOCKFISH_PATH in config.py (currently hardcoded in stockfish.py, play.py, analysis.py + find_stockfish in main.py)
-- [ ] Factor duplicated bad-move dedupe/increment logic (games.py + analysis.py)
-- [ ] Replace deprecated datetime.utcnow() with timezone-aware datetime.now(UTC)
-- [ ] Pin requirements.txt (currently unpinned)
-- [ ] Bump BadMove.move_played/best_move to String(50) (SAN can exceed 20)
+- [x] Move blocking SimpleEngine.analyse off the event loop (asyncio.to_thread for play/analyze/sync)
+- [x] Centralize STOCKFISH_PATH in config.py (removed 3 hardcoded copies + find_stockfish from main.py)
+- [x] Factor duplicated bad-move dedupe/increment logic (shared upsert_bad_moves)
+- [x] Replace deprecated datetime.utcnow() with utcnow() helper (naive UTC, no schema change)
+- [x] Pin requirements.txt (matching installed versions)
+- [x] Bump BadMove.move_played/best_move to String(50) (+ alembic migration c3d4e5f6a7b8)
 
 ## Phase 11: Frontend Tests
-- [ ] Add Vitest + React Testing Library
-- [ ] useChessGame.ts unit tests
-- [ ] PlayVsStockfish + PuzzleTrainer component tests
-- [ ] Playwright E2E smoke (login -> sync -> puzzle)
+- [x] Add Vitest + React Testing Library
+- [x] useChessGame.ts unit tests
+- [x] PlayVsStockfish + PuzzleTrainer component tests
+- [x] Playwright E2E smoke (config + render smoke; run `npm run test:e2e` after `npx playwright install`; full login->sync->puzzle not yet automated)
 
 ## Phase 12: Security & Hardening
-- [ ] SECRET_KEY: no hardcoded dev default (from env, fail fast in prod)
-- [ ] Make CORS origins configurable (hardcoded localhost:3000)
-- [ ] Rate limiting on /analyze, /play/move, /games/sync
-- [ ] Make SQLAlchemy echo configurable (hardcoded True)
+- [x] SECRET_KEY: no hardcoded dev default (from env, fail fast when ENVIRONMENT=production)
+- [x] Make CORS origins configurable (CORS_ORIGINS env, via settings)
+- [x] Rate limiting on /analyze, /play/move, /games/sync (in-memory per-IP limiter)
+- [x] Make SQLAlchemy echo configurable (DATABASE_ECHO env)
 
 ## Phase 13: Feature Ideas
 - [ ] Play-vs-Stockfish: real game mode, difficulty levels (UCI skill), Hint button, persist played games

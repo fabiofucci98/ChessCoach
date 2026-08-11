@@ -6,6 +6,7 @@ from pydantic import BaseModel, UUID4
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import utcnow
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.chess import User, BadMove
@@ -63,7 +64,7 @@ async def get_next_puzzle(
     db: AsyncSession = Depends(get_db),
 ):
     """Get the next puzzle due for review."""
-    now = datetime.utcnow()
+    now = utcnow()
 
     # First: puzzles due for review
     result = await db.execute(
@@ -140,7 +141,7 @@ async def answer_puzzle(
         quality,
     )
 
-    now = datetime.utcnow()
+    now = utcnow()
     puzzle.easiness_factor = ef
     puzzle.repetitions = reps
     puzzle.interval = interval

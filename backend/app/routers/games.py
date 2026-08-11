@@ -9,9 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.ratelimit import rate_limit
 from app.models.chess import User, Game, BadMove
 from app.services.chess_com import fetch_user_games, fetch_user_profile
-from app.routers.analysis import analyze_game_moves
+from app.routers.analysis import analyze_game_moves, upsert_bad_moves
 
 router = APIRouter(prefix="/games", tags=["games"])
 
@@ -139,28 +140,17 @@ async def _run_sync(user_id: uuid.UUID, username: str, sync_limit: int, db: Asyn
             _sync_progress[user_key]["current_game"] = idx + 1
             _sync_progress[user_key]["progress"] = 20 + int(80 * (idx + 1) / max(total_new, 1))
             _sync_progress[user_key]["message"] = f"Analyzing game {idx + 1}/{total_new}..."
-            bad_moves_data = analyze_game_moves(
+
+            # Blocking engine work runs in a worker thread (keeps the event loop free)
+            bad_moves_data = await asyncio.to_thread(
+                analyze_game_moves,
                 pgn=game.pgn,
                 player_color=game.player_color,
                 user_id=user_id,
                 game_id=game.id,
             )
 
-            for bm_data in bad_moves_data:
-                existing_result = await db.execute(
-                    select(BadMove).where(
-                        BadMove.user_id == user_id,
-                        BadMove.fen == bm_data["fen"],
-                        BadMove.move_played == bm_data["move_played"],
-                    )
-                )
-                existing = existing_result.scalar_one_or_none()
-
-                if existing:
-                    existing.counter += 1
-                else:
-                    bm = BadMove(**bm_data)
-                    db.add(bm)
+            await upsert_bad_moves(db, user_id, bad_moves_data)
 
             game.is_analyzed = True
             # Commit after each game so mistakes appear incrementally
@@ -177,6 +167,7 @@ async def _run_sync(user_id: uuid.UUID, username: str, sync_limit: int, db: Asyn
 async def sync_games(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(5, 60)),
 ):
     """Start a background sync of games from chess.com for the current user."""
     if not current_user.chess_com_username:

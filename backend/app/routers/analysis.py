@@ -1,4 +1,6 @@
+import asyncio
 import uuid
+import io
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,16 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import chess
 import chess.engine
 import chess.pgn
-import io
-import os
 
+from app.core.config import find_stockfish
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.chess import User, Game, BadMove
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
-
-STOCKFISH_PATH = os.getenv("STOCKFISH_PATH", "/usr/games/stockfish")
 
 
 class BadMoveResponse(BaseModel):
@@ -73,7 +72,10 @@ def analyze_game_moves(pgn: str, player_color: str, user_id: uuid.UUID, game_id:
     if not moves:
         return []
 
-    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
+    path = find_stockfish()
+    if not path:
+        raise RuntimeError("Stockfish engine not found. Set STOCKFISH_PATH.")
+    engine = chess.engine.SimpleEngine.popen_uci(path)
 
     bad_moves_found = []
 
@@ -134,6 +136,28 @@ def analyze_game_moves(pgn: str, player_color: str, user_id: uuid.UUID, game_id:
     return bad_moves_found
 
 
+async def upsert_bad_moves(db: AsyncSession, user_id: uuid.UUID, bad_moves_data: list[dict]) -> list[BadMove]:
+    """Save bad moves, incrementing the counter on duplicates (same user + FEN + move_played)."""
+    objects = []
+    for bm_data in bad_moves_data:
+        existing_result = await db.execute(
+            select(BadMove).where(
+                BadMove.user_id == user_id,
+                BadMove.fen == bm_data["fen"],
+                BadMove.move_played == bm_data["move_played"],
+            )
+        )
+        existing = existing_result.scalar_one_or_none()
+        if existing:
+            existing.counter += 1
+            objects.append(existing)
+        else:
+            bm = BadMove(**bm_data)
+            db.add(bm)
+            objects.append(bm)
+    return objects
+
+
 @router.post("/games/{game_id}", response_model=AnalyzeGameResponse)
 async def analyze_game(
     game_id: uuid.UUID,
@@ -156,36 +180,20 @@ async def analyze_game(
             detail="Game not found",
         )
 
-    # Run analysis
-    bad_moves_data = analyze_game_moves(
-        pgn=game.pgn,
-        player_color=game.player_color,
-        user_id=current_user.id,
-        game_id=game.id,
-    )
-
-    # Save bad moves to database, checking for duplicates and incrementing counters
-    bad_move_objects = []
-    for bm_data in bad_moves_data:
-        # Check if this exact bad move (same FEN + move_played) already exists for this user
-        existing_result = await db.execute(
-            select(BadMove).where(
-                BadMove.user_id == current_user.id,
-                BadMove.fen == bm_data["fen"],
-                BadMove.move_played == bm_data["move_played"],
-            )
+    # Run the blocking analysis in a worker thread (keeps the event loop free)
+    try:
+        bad_moves_data = await asyncio.to_thread(
+            analyze_game_moves,
+            pgn=game.pgn,
+            player_color=game.player_color,
+            user_id=current_user.id,
+            game_id=game.id,
         )
-        existing = existing_result.scalar_one_or_none()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
 
-        if existing:
-            # Increment counter
-            existing.counter += 1
-            bad_move_objects.append(existing)
-        else:
-            # Create new bad move record
-            bm = BadMove(**bm_data)
-            db.add(bm)
-            bad_move_objects.append(bm)
+    # Save bad moves, deduping and incrementing counters
+    bad_move_objects = await upsert_bad_moves(db, current_user.id, bad_moves_data)
 
     # Mark game as analyzed
     game.is_analyzed = True

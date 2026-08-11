@@ -4,6 +4,7 @@ from sqlalchemy import String, Integer, Text, Boolean, ForeignKey, Float, DateTi
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
+from app.core.config import utcnow
 
 class User(Base):
     __tablename__ = "users"
@@ -14,7 +15,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     chess_com_username: Mapped[str | None] = mapped_column(String(100), nullable=True)
     sync_limit: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     games = relationship("Game", back_populates="user", cascade="all, delete-orphan")
     bad_moves = relationship("BadMove", back_populates="user", cascade="all, delete-orphan")
@@ -48,8 +49,8 @@ class BadMove(Base):
     game_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("games.id", ondelete="CASCADE"))
     fen: Mapped[str] = mapped_column(Text, nullable=False)
     fen_before: Mapped[str | None] = mapped_column(Text, nullable=True)
-    move_played: Mapped[str] = mapped_column(String(20), nullable=False)
-    best_move: Mapped[str] = mapped_column(String(20), nullable=False)
+    move_played: Mapped[str] = mapped_column(String(50), nullable=False)
+    best_move: Mapped[str] = mapped_column(String(50), nullable=False)
     evaluation_before: Mapped[float] = mapped_column(Float, nullable=False)
     evaluation_after: Mapped[float] = mapped_column(Float, nullable=False)
     move_number: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -60,7 +61,7 @@ class BadMove(Base):
     repetitions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     next_review_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
     user = relationship("User", back_populates="bad_moves")
     game = relationship("Game", back_populates="bad_moves")
